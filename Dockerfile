@@ -1,7 +1,7 @@
 FROM python:3.7
 
-WORKDIR /files_store
-COPY files_store /files_store
+WORKDIR /project
+COPY project /project
 
 RUN apt-get update && apt-get install -y libpq-dev python3-dev
 

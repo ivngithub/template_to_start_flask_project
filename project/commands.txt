@@ -1,5 +1,5 @@
-# psql -U user_postgres fs_db
-fs_db=# \dt
+# psql -U user_postgres project_db
+project_db=# \dt
 
 >>> from main import db
 >>> db.create_all()
