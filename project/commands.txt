@@ -1,0 +1,320 @@
+# psql -U user_postgres fs_db
+fs_db=# \dt
+
+>>> from main import db
+>>> db.create_all()
+
+>>> drop_all()
+
+>>> db.session.add_all([c1, c1])
+>>> db.session.new
+
+
+>>> t1 = Tag(name="refactoring", slug="refactoring")
+>>> t2 = Tag(name="snippet", slug="snippet")
+>>> t3 = Tag(name="analytics", slug="analytics")
+>>> p1.tags.append(t1)
+>>> p1.tags.extend([t2, t3])
+>>> db.session.add(p1)
+>>>
+>>> db.session.commit()
+
+>>> db.session.delete(tmp)
+>>> db.session.commit()
+
+"""
+В некоторых случаях может возникнуть необходимость удалить все дочерние записи при том, что родительские записи
+уже удалены. Это можно сделать, передав cascade=’all,delete-orphan’ инструкции db.relationship().
+
+class Category(db.Model):
+    #...
+    posts = db.relationship('Post', backref='category', cascade='all,delete-orphan')
+
+"""
+
+"""
+Запрос данных
+Чтобы выполнить запрос к базе данных, используется метод query() объекта session. Метод query() возвращает объект flask_sqlalchemy.BaseQuery, который является расширением оригинального объекта sqlalchemy.orm.query.Query. Объект flask_sqlalchemy.BaseQuery представляет собой оператор SELECT, который будет использоваться для осуществления запросов к базе данных. В этой таблице перечислены основные методы класса flask_sqlalchemy.BaseQuery.
+
+Метод	Описание
+all()	Возвращает результат запроса (представленный flask_sqlalchemy.BaseQuery) в виде списка.
+count()	Возвращает количество записей в запросе.
+first()	Возвращает первый результат запроса или None, если в нем нет строк.
+first_or_404()	Возвращает первый результат запроса или ошибку 404, если в нем нет строк.
+get(pk)	Возвращает объект, который соответствует данному первичному ключу или None, если объект не найден.
+get_or_404(pk)	Возвращает объект, который соответствует данному первичному ключу или ошибку 404, если объект не найден.
+filter(*criterion)	Возвращает новый экземпляр flask_sqlalchemy.BaseQuery с оператором WHERE.
+limit(limit)	Возвращает новый экземпляр flask_sqlalchemy.BaseQuery с оператором LIMIT.
+offset(offset)	Возвращает новый экземпляр flask_sqlalchemy.BaseQuery с оператором OFFSET.
+order_by(*criterion)	Возвращает новый экземпляр flask_sqlalchemy.BaseQuery с оператором OFFSET.
+join()	Возвращает новый экземпляр flask_sqlalchemy.BaseQuery после создания SQL JOIN.
+Метод all()
+В своей простейшей форме метод query() принимает в качестве аргументов один или больше классов модели или колонки. Следующий код вернет все записи из таблицы posts.
+
+>>>
+>>> db.session.query(Post).all()
+[<1:Post 1>, <2:Post 2>, <3:Post 3>, <4:Post 4>]
+>>>
+Похожим образом следующий код вернет все записи из таблиц categories и tags.
+
+>>>
+>>> db.session.query(Category).all()
+[<1:Python>, <2:Java>]
+>>>
+>>>
+>>> db.session.query(Tag).all()
+[<1:refactoring>, <2:snippet>, <3:analytics>]
+>>>
+Чтобы получить чистый SQL, использованный для запроса к базе данных, нужно просто вывести объект flask_sqlalchemy.BaseQuery:
+
+>>>
+>>> print(db.session.query(Post))
+SELECT
+    posts.id  AS  posts_id,
+    posts.title AS  posts_title,
+    posts.slug AS  posts_slug,
+    posts.content AS  posts_content,
+    posts.created_on AS  posts_created_on,
+    posts.u  pdated_on AS  posts_updated_on,
+    posts.category_id AS  posts_category_id
+FROM
+    posts
+>>>
+В предыдущих примерах данные возвращались со всех колонок таблицы. Это можно поменять, передав методу query() названия колонок:
+
+>>>
+>>> db.session.query(Post.id,  Post.title).all()
+[(1, 'Post 1'), (2, 'Post 2'), (3, 'Post 3'), (4, 'Post 4')]
+>>>
+Метод count()
+Метод count() возвращает количество результатов в запросе.
+
+>>>
+>>> db.session.query(Post).count()  # получить общее количество записей в таблице Post
+4
+>>> db.session.query(Category).count()  # получить общее количество записей в таблице Category
+2
+>>> db.session.query(Tag).count()  # получить общее количество записей в таблице Tag
+3
+>>>
+Метод first()
+Метод first() вернет только первый запрос из запроса или None, если в запросе нет результатов.
+
+>>>
+>>> db.session.query(Post).first()
+<1:Post 1>
+>>>
+>>> db.session.query(Category).first()
+<1:Python>
+>>>
+>>> db.session.query(Tag).first()
+<1:refactoring>
+>>>
+Метод get()
+Метод get() вернет экземпляр объекта с соответствующим первичным ключом или None, если такой объект не был найден.
+
+>>>
+>>> db.session.query(Post).get(2)
+<2:Post 2>
+>>>
+>>> db.session.query(Category).get(1)
+<1:Python>
+>>>
+>>> print(db.session.query(Category).get(10))  # ничего не найдено по первичному ключу 10
+None
+>>>
+Метод get_or_404()
+То же самое, что и метод get(), но вместо None вернет ошибку 404, если объект не найден.
+
+>>>
+>>> db.session.query(Post).get_or_404(1)
+<1:Post 1>
+>>>
+>>>
+>>> db.session.query(Post).get_or_404(100)
+Traceback (most recent call last):
+...
+werkzeug.exceptions.NotFound: 404  Not  Found: The requested URL was not found on the server. If  you entered the URL manually please check your spelling and try again.
+>>>
+Метод filter()
+Метод filter() позволяет отсортировать результатов с помощью оператора WHERE, примененного к запросу. Он принимает колонку, оператор или значение. Например:
+
+>>>
+>>> db.session.query(Post).filter(Post.title == 'Post 1').all()
+[<1:Post 1>]
+>>>
+Запрос вернет все посты с заголовком "Post 1". SQL-эквивалент запроса следующий:
+
+>>>
+>>> print(db.session.query(Post).filter(Post.title == 'Post 1'))
+SELECT
+    posts.id AS posts_id,
+    posts.title AS posts_title,
+    posts.slug AS posts_slug,
+    posts.content AS posts_content,
+    posts.created_on AS posts_created_on,
+    posts.u  pdated_on AS posts_updated_on,
+    posts.category_id AS posts_category_id
+FROM
+    posts
+WHERE
+    posts.title = % (title_1) s
+>>>
+>>>
+Строка % (title_1) s в условии WHERE — это заполнитель. На ее месте будет реальное значение при выполнении запроса.
+
+Методу filter() можно передать несколько значений и они будут объединены оператором AND в SQL. Например:
+
+>>>
+>>> db.session.query(Post).filter(Post.id >= 1, Post.id <= 2).all()
+[<1:Post 1>, <2:Post 2>]
+>>>
+>>>
+Этот запрос вернет все посты, первичный ключ которых больше 1, но меньше 2. SQL-эквивалент:
+
+>>>
+>>> print(db.session.query(Post).filter(Post.id >= 1, Post.id <= 2))
+SELECT
+    posts.id AS posts_id,
+    posts.title AS posts_title,
+    posts.slug AS posts_slug,
+    posts.content AS posts_content,
+    posts.created_on AS posts_created_on,
+    posts.u pdated_on AS posts_updated_on,
+    posts.category_id AS posts_category_id
+FROM
+    posts
+WHERE
+    posts.id >= % (id_1) s
+AND posts.id <= % (id_2) s
+>>>
+Метод first_or_404()
+Делает то же самое, что и метод first(), но вместо None возвращает ошибку 404, если запрос без результата.
+
+>>>
+>>> db.session.query(Post).filter(Post.id > 1).first_or_404()
+<2:Post 2>
+>>>
+>>> db.session.query(Post).filter(Post.id > 10).first_or_404().all()
+Traceback (most recent call last):
+...
+werkzeug.exceptions.NotFound: 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+>>>
+Метод limit()
+Метод limit() добавляет оператор LIMIT к запросу. Он принимает количество строк, которые нужно вернуть с запросом.
+
+>>>
+>>> db.session.query(Post).limit(2).all()
+[<1:Post 1>, <2:Post 2>]
+>>>
+>>> db.session.query(Post).filter(Post.id >= 2).limit(1).all()
+[<2:Post 2>]
+>>>
+SQL-эквивалент:
+
+>>>
+>>> print(db.session.query(Post).limit(2))
+SELECT
+posts.id AS posts_id,
+posts.title AS posts_title,
+posts.slug AS posts_slug,
+posts.content AS posts_content,
+posts.created_on AS posts_created_on,
+posts.u  pdated_on AS posts_updated_on,
+posts.category_id AS posts_category_id
+FROM
+    posts
+LIMIT % (param_1) s
+>>>
+>>>
+>>> print(db.session.query(Post).filter(Post.id >= 2).limit(1))
+SELECT
+    posts.id AS posts_id,
+    posts.title AS posts_title,
+    posts.slug AS posts_slug,
+    posts.content AS posts_content,
+    posts.created_on AS posts_created_on,
+    posts.u  pdated_on AS posts_updated_on,
+    posts.category_id AS posts_category_id
+FROM
+    posts
+WHERE
+    posts.id >= % (id_1) s
+LIMIT % (param_1) s
+>>>
+>>>
+Метод offset()
+Метод offset() добавляет условие OFFSET в запрос. В качестве аргумента он принимает смещение. Часто используется вместе с limit().
+
+>>>
+>>> db.session.query(Post).filter(Post.id > 1).limit(3).offset(1).all()
+[<3:Post 3>, <4:Post 4>]
+>>>
+SQL-эквивалент:
+
+>>>
+>>> print(db.session.query(Post).filter(Post.id > 1).limit(3).offset(1))
+SELECT
+    posts.id AS posts_id,
+    posts.title AS posts_title,
+    posts.slug AS posts_slug,
+    posts.content AS posts_content,
+    posts.created_on AS posts_created_on,
+    posts.u  pdated_on AS posts_updated_on,
+    posts.category_id AS posts_category_id
+FROM
+    posts
+WHERE
+    posts.id > % (id_1) s
+LIMIT % (param_1) s, % (param_2) s
+>>>
+Строки % (param_1) s и % (param_2) — заполнители для смещения и ограничения вывода, соответственно.
+
+Метод order_by()
+Метод order_by() используется, чтобы упорядочить результат, добавив к запросу оператор ORDER BY. Он принимает количество колонок, для которых нужно установить порядок. По умолчанию сортирует в порядке возрастания.
+
+>>>
+>>> db.session.query(Tag).all()
+[<1:refactoring>, <2:snippet>, <3:analytics>]
+>>>
+>>> db.session.query(Tag).order_by(Tag.name).all()
+[<3:analytics>, <1:refactoring>, <2:snippet>]
+>>>
+Для сортировки по убыванию нужно использовать функцию db.desc():
+
+>>>
+>>> db.session.query(Tag).order_by(db.desc(Tag.name)).all()
+[<2:snippet>, <1:refactoring>, <3:analytics>]
+>>>
+Метод join()
+Метод join() используется для создания JOIN в SQL. Он принимает имя таблицы, для которой нужно создать JOIN.
+
+>>>
+>>> db.session.query(Post).join(Category).all()
+[<1:Post 1>, <2:Post 2>, <3:Post 3>]
+>>>
+SQL-эквивалент:
+
+>>>
+>>> print(db.session.query(Post).join(Category))
+SELECT
+    posts.id  AS posts_id,
+    posts.title AS posts_title,
+    posts.slug AS posts_slug,
+    posts.content AS posts_content,
+    posts.created_on AS posts_created_on,
+    posts.u  pdated_on AS posts_updated_on,
+    posts.category_id AS posts_category_id
+FROM
+    posts
+Метод join() широко используется, чтобы получить данные из одной или большего количества таблиц одним запросом. Например:
+
+>>>
+>>> db.session.query(Post.title,  Category.name).join(Category).all()
+[('Post 1', 'Python'),  ('Post 2', 'Python'), ('Post 3', 'Java')]
+>>>
+Можно создать JOIN для большее чем двух таблиц с помощью цепочки методов join():
+
+db.session.query(Table1).join(Table2).join(Table3).join(Table4).all()
+
+"""
